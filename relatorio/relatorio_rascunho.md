@@ -261,7 +261,7 @@ A comparação LLM-direto vs. LLM com RAG é o contraste principal, pois evidenc
 
 **Decisão do parâmetro padrão:** mantemos top-k=4 como padrão documentado no sistema por ser o valor de equilíbrio entre contexto e custo de tokens no prompt. top-k=8 é recomendado para perguntas sobre artigos específicos da lei.
 
-*Ver gráfico em `eval/results/grafico_topk.png`.*
+*Ver gráfico em `eval/results/grafico_topk.png`. Código: `eval/comparacoes_extras.py`.*
 
 ### 7.5 Comparação de estratégia de chunking (recursivo 500/80 vs. fixo 400/0)
 
@@ -276,7 +276,7 @@ Avaliação de qualidade de retrieval (score cosine máximo) em 10 queries repre
 
 **Contraponto:** o chunking recursivo vence nas queries que dependem de continuidade estrutural entre parágrafos (e.g., "direitos do titular", "Relatório de Impacto"), onde o overlap de 80 caracteres preserva a coesão entre trechos adjacentes. O chunking fixo também gerou 3 chunks que excederam o limite de 400 caracteres (palavras não podem ser cortadas), e produziu 1.780 chunks vs. 1.476 do recursivo — 20% mais fragmentação.
 
-*Ver gráfico em `eval/results/grafico_chunking.png`.*
+*Ver gráfico em `eval/results/grafico_chunking.png`. Código: `eval/comparacoes_extras.py`.*
 
 ---
 
@@ -359,10 +359,14 @@ Este trabalho construiu uma aplicação RAG funcional para consultas sobre LGPD 
 
 ## 11. Uso de IA generativa
 
-Este trabalho utilizou ferramentas de IA generativa como apoio em três etapas:
+Este trabalho utilizou Claude Code (Anthropic) como ferramenta de apoio nas etapas descritas abaixo. Em todos os casos, o grupo realizou revisão e validação humana antes de incorporar qualquer saída ao trabalho final.
 
-1. **Planejamento e estruturação do projeto** — Claude Code (Anthropic) auxiliou no mapeamento das etapas de implementação e na organização dos critérios de avaliação segundo a especificação do trabalho.
-2. **Escrita e revisão de código** — Claude Code auxiliou na implementação dos módulos `ingest.py`, `retriever.py`, `rag_pipeline.py`, `validator.py` e `run_eval.py`. Todo o código foi revisado, compreendido e testado manualmente pelo grupo antes de ser utilizado.
-3. **Estrutura do relatório** — O rascunho inicial das seções foi gerado com auxílio de IA e revisado e ajustado pelo grupo, que verificou a precisão de todos os dados numéricos com os resultados reais da avaliação.
+| Etapa | Como a IA foi usada | Revisão humana realizada |
+|---|---|---|
+| **Planejamento** | Estruturação das etapas de implementação e mapeamento dos critérios de avaliação | O grupo revisou o plano contra a especificação e tomou decisões de domínio (escolha de LGPD como domínio, exclusão da Resolução 18/2024 do corpus) |
+| **Coleta da base documental** | Navegação na API REST do portal gov.br/anpd para identificar URLs de download | O grupo verificou manualmente cada documento baixado: leu os títulos, confirmou que eram os documentos corretos e validou a contagem de páginas |
+| **Implementação do código** | Escrita inicial dos módulos `ingest.py`, `retriever.py`, `llm.py`, `validator.py`, `rag_pipeline.py`, `run_eval.py` | Cada módulo foi lido linha a linha pelo grupo; bugs identificados em testes manuais foram diagnosticados e corrigidos pelo grupo (ex.: inversão de relevância do embedding EN, bug de sumário com reticências no prefixo contextual, JSON inválido do Gemini Lite) |
+| **Testset** | Geração de rascunho dos 30 casos de teste | O grupo revisou e ajustou cada caso: corrigiu `deve_recusar`, escreveu as `resposta_referencia` com base na leitura direta dos documentos e verificou as categorias |
+| **Relatório** | Rascunho inicial das seções | O grupo verificou a precisão de todos os dados numéricos contra os arquivos CSV de resultado (`eval/results/eval_2026-07-09.csv`), corrigiu a seção 8.1 quando a análise estava desatualizada em relação ao código, e ajustou a ordenação das seções 7.3–7.5 |
 
 O grupo é responsável por todo o conteúdo entregue, compreende a arquitetura, a ingestão, a recuperação, a validação, os experimentos e os resultados, e está preparado para defender qualquer decisão técnica na apresentação oral.
