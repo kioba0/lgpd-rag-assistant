@@ -225,14 +225,18 @@ ou étnica, convicção religiosa, opinião política...
 - Chunk de guia não relacionado → score 0,765 (+0,014 de vantagem)
 - **Resultado:** sistema disse que não tinha a informação — mas tinha
 
-**Solução proposta (não implementada):**
+**Solução implementada em `src/ingest.py`:**
 ```python
-# Injetar artigo como prefixo de cada inciso
-chunk = f"[Art. 5°, II] {texto_do_inciso}"
+# Prefixo com frase introdutória do artigo
+"[Art. 18. O titular dos dados pessoais tem direito a obter do controlador]
+ I - confirmação da existência de tratamento; II - acesso aos dados..."
 ```
+Score subiu de **0,74 → 0,89**. Caso passou de recusa para `base_suficiente = true`.
+
+**Limitação residual:** sanções do Art. 52 ainda falham — incisos da lista ficam na posição 9+ no ranking global porque outros documentos sobre sanções competem com scores mais altos. Solução definitiva: hybrid search (BM25 + semântico).
 
 **Fala:**
-> "Esse é o exemplo mais concreto de falha que encontramos. O chunk tem a definição correta, mas começa com 'II -' sem contexto do artigo. O modelo de embedding não consegue conectar isso à pergunta com a mesma força que conecta textos corridos dos guias. A correção é simples — uma linha no script de ingestão — mas exigiria reprocessar toda a base. Deixamos como trabalho futuro, e o identificamos como achado importante."
+> "Identificamos o problema, implementamos a correção de prefixo contextual — e resolvemos a maioria dos casos. O que ficou de fora foi a lista de sanções do Art. 52, onde a competição com outros documentos sobre o mesmo tema ainda derruba o chunk certo para baixo do top-4. Esse é o limite que documentamos como trabalho futuro."
 
 ---
 
