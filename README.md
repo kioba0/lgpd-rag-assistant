@@ -25,7 +25,7 @@ Prompt com contexto → Gemini Flash → JSON validado (Pydantic) →
 
 ```bash
 # 1. Criar e ativar ambiente virtual
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate  # Linux/Mac
 # .venv\Scripts\activate   # Windows
 
@@ -40,7 +40,7 @@ cp .env.example .env
 ## Executar a ingestão (rodar uma vez)
 
 ```bash
-python src/ingest.py
+python3 src/ingest.py
 ```
 
 Lê todos os PDFs em `data/raw/`, gera chunks, cria embeddings e persiste no Chroma em `chroma_db/`. Leva ~2 minutos. Idempotente — pode rodar quantas vezes quiser sem duplicar.
@@ -56,7 +56,7 @@ Abre em http://localhost:8501. Permite consultar no modo RAG ou LLM-direto (base
 ## Rodar a avaliação experimental
 
 ```bash
-python eval/run_eval.py
+python3 eval/run_eval.py
 ```
 
 Roda os 30+ casos de `eval/testset.json` nas duas versões (baseline e RAG) e salva resultados em `eval/results/`.
