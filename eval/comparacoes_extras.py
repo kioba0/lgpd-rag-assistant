@@ -159,7 +159,7 @@ def tabela_topk(resultados_por_k: dict) -> None:
     for i, v in enumerate(lats):
         ax2.text(i, v + 30, f"{v:.0f}", ha="center", fontsize=10)
 
-    fig.suptitle("Comparação top-k: 3 vs. 4 vs. 8", fontsize=14, fontweight="bold")
+    fig.suptitle(f"Comparação top-k: {min(ks)} a {max(ks)}", fontsize=14, fontweight="bold")
     fig.tight_layout()
     out = RESULTS / "grafico_topk.png"
     fig.savefig(out, dpi=150)
@@ -339,10 +339,12 @@ if __name__ == "__main__":
                 "erro":            r.get("rag_erro", ""),
             })
 
-    rows_3 = rodar_topk(casos, existentes, 3)
-    rows_8 = rodar_topk(casos, existentes, 8)
+    # Roda todos os top-k de 2 a 8 (top-k=3, 4, 8 usam cache se já existirem)
+    todos = {4: rows_4}
+    for k in [2, 3, 5, 6, 7, 8]:
+        todos[k] = rodar_topk(casos, existentes, k)
 
-    tabela_topk({3: rows_3, 4: rows_4, 8: rows_8})
+    tabela_topk(todos)
 
     # ── Comparação 2: chunking ────────────────────────────────────────
     print("\n━━━ COMPARAÇÃO 2: chunking (retrieval only) ━━━")

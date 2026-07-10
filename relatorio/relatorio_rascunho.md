@@ -249,17 +249,26 @@ A comparação LLM-direto vs. LLM com RAG é o contraste principal, pois evidenc
 
 > **RAG:** respondeu corretamente em português com `base_suficiente = true`, demonstrando que o modelo multilíngue indexa e recupera independentemente do idioma da consulta.
 
-### 7.4 Comparação de top-k (3 vs. 4 vs. 8)
+### 7.4 Comparação de top-k (2 a 8)
 
 | top-k | Recusa correta | Respondeu em base | Latência média |
 |---|---|---|---|
+| 2 | 100% | 46% | 2.023 ms |
 | 3 | 100% | 67% | 1.530 ms |
 | **4** (padrão) | **100%** | **67%** | **1.727 ms** |
+| 5 | 100% | 58% | 1.146 ms |
+| 6 | 100% | 67% | 1.202 ms |
+| 7 | 100% | 62% | 1.088 ms |
 | 8 | 100% | **75%** | 1.453 ms |
 
-**Achado:** top-k=8 melhora a taxa de resposta em 8 pontos percentuais (de 67% para 75%) com latência levemente menor que top-k=4. A taxa de recusa permanece perfeita (100%) em todos os valores. O ganho de top-k=8 sobre top-k=3 é claro: mais contexto recuperado aumenta a chance de o chunk relevante estar presente — especialmente para as questões onde o artigo correto está num chunk fragmentado (ver Seção 8.1).
+**Achados principais:**
 
-**Decisão do parâmetro padrão:** mantemos top-k=4 como padrão documentado no sistema por ser o valor de equilíbrio entre contexto e custo de tokens no prompt. top-k=8 é recomendado para perguntas sobre artigos específicos da lei.
+- **Recusa correta = 100% em todos os valores.** O threshold de score (0,3) opera independentemente do top-k — recuperar mais ou menos chunks não altera a capacidade de recusar perguntas fora da base.
+- **top-k=2 é claramente insuficiente** (46%): muito pouco contexto para cobrir perguntas que dependem de múltiplos trechos.
+- **top-k=8 é o melhor** (75%), com latência similar ou menor que top-k=4 — prompts maiores não aumentaram significativamente o tempo de resposta neste modelo.
+- **Variação em top-k=5 e top-k=7** (58% e 62%) pode refletir variabilidade do LLM em decisões limítrofes (perguntas cujos chunks relevantes ficam na borda do ranking) e não representa uma tendência estrutural.
+
+**Decisão do parâmetro padrão:** mantemos top-k=4 como padrão da aplicação por clareza de documentação. O Streamlit expõe o slider de 2 a 8, permitindo que o usuário ajuste conforme a pergunta.
 
 *Ver gráfico em `eval/results/grafico_topk.png`. Código: `eval/comparacoes_extras.py`.*
 
