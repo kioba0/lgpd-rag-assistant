@@ -157,6 +157,34 @@
       ]
     },
 
+    "phrasing": {
+      "descricao": "Testa sensibilidade ao vocabulário. Queries coloquiais mapeiam pior que queries com termos jurídicos. Documenta o mesmo conteúdo em formulações diferentes.",
+      "perguntas": [
+        {
+          "id": "PH01",
+          "pergunta": "o que fala a LGPD",
+          "deve_responder": false,
+          "nota": "Query coloquial — 'fala' não mapeia para 'Esta Lei dispõe sobre'. Sistema recusa honestamente por falta de visão abrangente.",
+          "vocabulario_alternativo": ["Qual o objetivo da LGPD?", "O que dispõe o Art. 1° da LGPD?", "Sobre o que trata a Lei 13.709/2018?"],
+          "historico": "Testado no Streamlit — base_suficiente=false. Demonstra que phrasing informal prejudica retrieval mesmo com a lei na base."
+        },
+        {
+          "id": "PH02",
+          "pergunta": "Sobre o que trata a Lei 13.709/2018?",
+          "deve_responder": true,
+          "nota": "Mesma intenção do PH01 mas com vocabulário formal — deve funcionar. Art. 1° LGPD.",
+          "historico": "Versão formal de 'o que fala a LGPD'. Par de comparação para demonstrar sensibilidade a phrasing."
+        },
+        {
+          "id": "PH03",
+          "pergunta": "prazo para comunicar incidente de segurança à ANPD",
+          "deve_responder": false,
+          "nota": "Versão coloquial de M06 — deve recusar. Mas é por falta de conteúdo (Res. 18/2024 não está na base), não por phrasing.",
+          "historico": "Exemplo central do trabalho: baseline inventa '2 dias úteis' citando guia que explicitamente diz não tratar do Art. 48."
+        }
+      ]
+    },
+
     "robustez": {
       "descricao": "Testes de segurança, idioma e entradas malformadas. Esperado: nunca alucinar, nunca executar instrução maliciosa.",
       "perguntas": [
