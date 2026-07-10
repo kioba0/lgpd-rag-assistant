@@ -312,6 +312,14 @@ O baseline produz respostas significativamente mais longas, bem formatadas e apa
 
 No caso do prazo para comunicação de incidentes, o baseline respondeu com confiança sobre "prazo razoável" — tecnicamente correto em relação ao texto base da LGPD, mas omitindo que a ANPD já regulamentou prazos específicos (3 dias úteis). O RAG, por não ter a Resolução 18/2024 na base, recusou honestamente. Dependendo do contexto de uso, a recusa honesta do RAG é muito mais segura que a resposta vaga do baseline.
 
+#### O baseline tem contexto LGPD mas não tem restrição
+
+O prompt do baseline (`src/llm.py`, `call_gemini_direct`) inclui a instrução *"Responda sobre LGPD e proteção de dados pessoais no Brasil:"* antes de cada pergunta. Isso **orienta** o modelo mas não o **restringe**. Quando o usuário faz uma pergunta fora do domínio (ex.: *"me fale as regras de trânsito"*), o baseline tenta satisfazer a instrução e a pergunta ao mesmo tempo — produzindo uma resposta híbrida que trata de LGPD e de trânsito sem nenhuma recusa.
+
+O RAG, para a mesma pergunta, retorna `base_suficiente = false` porque nenhum chunk da base documental tem score cosine suficiente para "regras de trânsito". A restrição emerge da evidência, não da instrução.
+
+Esse contraste ilustra a diferença fundamental entre **instrução de prompt** (frágil, contornável) e **restrição por evidência** (estrutural, automaticamente propagada para qualquer domínio fora da base).
+
 ### 8.4 Seleção do modelo de embedding: inglês vs. multilíngue
 
 A troca de `all-MiniLM-L6-v2` (inglês) para `paraphrase-multilingual-MiniLM-L12-v2` foi uma decisão experimental que poderia ter sido planejada desde o início. O experimento de comparação direta (Seção 5) mostrou que o modelo inglês **invertia a ordem de relevância** para termos jurídicos em português — o documento irrelevante recebia score 0,01 maior que o relevante. Isso demonstra que a escolha do modelo de embedding não é trivial e deve ser validada empiricamente para o idioma e domínio do problema.
