@@ -75,9 +75,13 @@ def parse_and_validate(raw: str, matches: list[Match]) -> tuple[Optional[Respost
         # Ignora numerações de itens de guia (ex: "item 6", "item 31")
         if re.match(r"^item\s+\d+", artigo, re.IGNORECASE):
             continue
-        # Referências compostas: "Art. 7º e Art. 11" → testa cada parte
-        partes = re.split(r"\s+e\s+|\s*[,;]\s*", artigo, flags=re.IGNORECASE)
-        if not all(_normalizar(p) in chunks_text_norm for p in partes if p.strip()):
+        # Referências compostas: "Art. 7º e Art. 11" ou "Art. 52, § 1º (LGPD)"
+        # Divide em partes e verifica cada uma; ignora termos entre parênteses e "§"
+        partes = re.split(r"\s+e\s+|\s*[,;§(]\s*", artigo, flags=re.IGNORECASE)
+        partes = [p.strip().rstrip(")") for p in partes if p.strip()]
+        # Só verifica partes que parecem referências de artigo (contêm "art" ou números)
+        partes_artigo = [p for p in partes if re.search(r"art\.?|\d", p, re.IGNORECASE)]
+        if partes_artigo and not all(_normalizar(p) in chunks_text_norm for p in partes_artigo):
             resposta.confianca = min(resposta.confianca, 0.4)
 
     return resposta, ""

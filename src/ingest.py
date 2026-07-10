@@ -151,13 +151,14 @@ def _detect_artigo(text: str) -> str:
 def _detect_artigo_intro(text: str) -> str:
     """Extrai a frase introdutória do último artigo no chunk.
     Ex: 'Art. 18. O titular dos dados pessoais tem direito a obter do controlador'
+         'Art. 6º As atividades de tratamento deverão observar...'
     Inclui até 120 chars depois do número do artigo para dar contexto semântico.
     Ignora entradas de sumário (reticências: 'Art. 62 .........').
     """
-    matches = list(re.finditer(r"Art\.?\s*\d+[º°]?\.\s*([^\n]{10,120})", text))
+    # Aceita tanto 'Art. 6°.' quanto 'Art. 6º ' (com ou sem ponto extra)
+    matches = list(re.finditer(r"Art\.?\s*\d+[º°]?[.\s]\s*([^\n]{10,120})", text))
     for m in reversed(matches):
         intro = m.group(1).strip()
-        # Ignora se a "intro" é majoritariamente reticências ou caracteres de tabela
         letras = sum(1 for c in intro if c.isalpha())
         if letras >= 10:
             return m.group(0)[:120].strip()
