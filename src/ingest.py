@@ -69,28 +69,72 @@ def _clean_text(text: str) -> str:
     return text.strip()
 
 
+# Detecta títulos de seção numerados dos guias: "2.3 Título da Seção"
+_SECAO_RE = re.compile(
+    r"(?:^|\n)(\d+\.(?:\d+\.?)*\s+[A-ZÁÉÍÓÚÀÃÕÂÊÎ][^\n]{5,80})",
+    re.MULTILINE,
+)
+
+
 def chunk_pages(pages: list[dict]) -> list[dict]:
-    """Aplica RecursiveCharacterTextSplitter preservando metadados de página."""
+    """Aplica RecursiveCharacterTextSplitter preservando metadados de página.
+
+    Cada chunk é prefixado com o título de seção e/ou artigo vigente quando
+    esses não aparecem no próprio texto do chunk — resolve o problema de
+    títulos/cabeçalhos que ficam no final de um chunk enquanto o conteúdo
+    começa no seguinte sem contexto.
+    """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
-        # Prioridade: quebra no início de artigo, depois parágrafo, sentença, palavra
         separators=["\n\nArt.", "\n\n", "\n", ". ", " "],
     )
     chunks = []
     global_idx = 0
+    secao_atual = ""   # persiste entre chunks do mesmo documento
+    artigo_atual = ""
+
     for page in pages:
+        # Detecta se esta página introduce nova seção ou artigo
+        nova_secao = _detect_secao(page["text"])
+        if nova_secao:
+            secao_atual = nova_secao
+
         splits = splitter.split_text(page["text"])
         for split in splits:
+            # Atualiza contexto se este chunk contém novo título/artigo
+            ns = _detect_secao(split)
+            if ns:
+                secao_atual = ns
+            na = _detect_artigo(split)
+            if na:
+                artigo_atual = na
+
+            # Prefixar com contexto estrutural ausente
+            prefixo_parts = []
+            if secao_atual and secao_atual[:40] not in split[:150]:
+                prefixo_parts.append(f"[{secao_atual}]")
+            if artigo_atual and artigo_atual not in split[:100]:
+                prefixo_parts.append(f"[{artigo_atual}]")
+
+            texto_final = " ".join(prefixo_parts) + " " + split if prefixo_parts else split
+
             chunks.append({
-                "text": split,
+                "text": texto_final.strip(),
                 "page": page["page"],
                 "source": page["source"],
                 "chunk_index": global_idx,
-                "artigo_detectado": _detect_artigo(split),
+                "artigo_detectado": na or artigo_atual,
             })
             global_idx += 1
+
     return chunks
+
+
+def _detect_secao(text: str) -> str:
+    """Extrai o primeiro título de seção numerado, ex: '2.3 Obrigações da LGPD...'"""
+    match = _SECAO_RE.search(text)
+    return match.group(1).strip()[:80] if match else ""
 
 
 def _detect_artigo(text: str) -> str:
