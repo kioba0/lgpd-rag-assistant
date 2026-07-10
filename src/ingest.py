@@ -79,10 +79,10 @@ _SECAO_RE = re.compile(
 def chunk_pages(pages: list[dict]) -> list[dict]:
     """Aplica RecursiveCharacterTextSplitter preservando metadados de página.
 
-    Cada chunk é prefixado com o título de seção e/ou artigo vigente quando
-    esses não aparecem no próprio texto do chunk — resolve o problema de
-    títulos/cabeçalhos que ficam no final de um chunk enquanto o conteúdo
-    começa no seguinte sem contexto.
+    Cada chunk recebe como prefixo o cabeçalho estrutural vigente (seção +
+    artigo com sua frase introdutória), quando esse contexto não aparece no
+    próprio texto do chunk. Isso resolve o problema de incisos numerados
+    (I -, II -, III -) que ficam isolados do artigo a que pertencem.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -91,31 +91,36 @@ def chunk_pages(pages: list[dict]) -> list[dict]:
     )
     chunks = []
     global_idx = 0
-    secao_atual = ""   # persiste entre chunks do mesmo documento
-    artigo_atual = ""
+    secao_atual = ""
+    artigo_intro = ""  # inclui número + frase introdutória do artigo
 
     for page in pages:
-        # Detecta se esta página introduce nova seção ou artigo
         nova_secao = _detect_secao(page["text"])
         if nova_secao:
             secao_atual = nova_secao
 
         splits = splitter.split_text(page["text"])
         for split in splits:
-            # Atualiza contexto se este chunk contém novo título/artigo
             ns = _detect_secao(split)
             if ns:
                 secao_atual = ns
-            na = _detect_artigo(split)
-            if na:
-                artigo_atual = na
 
-            # Prefixar com contexto estrutural ausente
+            # Extrai frase introdutória do artigo: "Art. 18. O titular dos dados..."
+            nova_intro = _detect_artigo_intro(split)
+            if nova_intro:
+                artigo_intro = nova_intro
+
+            # Monta prefixo apenas quando o conteúdo é inciso sem contexto
             prefixo_parts = []
-            if secao_atual and secao_atual[:40] not in split[:150]:
+            eh_inciso_solto = bool(re.match(r"^\[?[IVX]+\s*[-–]|^\[?\d+\s*[-–]", split.strip()))
+
+            if secao_atual and secao_atual[:40] not in split[:200]:
                 prefixo_parts.append(f"[{secao_atual}]")
-            if artigo_atual and artigo_atual not in split[:100]:
-                prefixo_parts.append(f"[{artigo_atual}]")
+            if artigo_intro and artigo_intro[:30] not in split[:200]:
+                prefixo_parts.append(f"[{artigo_intro}]")
+            elif eh_inciso_solto and artigo_intro:
+                # Força prefixo do artigo em incisos soltos mesmo que já apareça
+                prefixo_parts.append(f"[{artigo_intro}]")
 
             texto_final = " ".join(prefixo_parts) + " " + split if prefixo_parts else split
 
@@ -124,7 +129,7 @@ def chunk_pages(pages: list[dict]) -> list[dict]:
                 "page": page["page"],
                 "source": page["source"],
                 "chunk_index": global_idx,
-                "artigo_detectado": na or artigo_atual,
+                "artigo_detectado": _detect_artigo(split) or (_detect_artigo(artigo_intro) if artigo_intro else ""),
             })
             global_idx += 1
 
@@ -138,9 +143,25 @@ def _detect_secao(text: str) -> str:
 
 
 def _detect_artigo(text: str) -> str:
-    """Extrai o primeiro artigo mencionado no chunk, ex: 'Art. 5º'."""
-    match = re.search(r"Art\.?\s*\d+[º°]?", text)
-    return match.group(0) if match else ""
+    """Extrai o ÚLTIMO artigo mencionado no chunk."""
+    matches = re.findall(r"Art\.?\s*\d+[º°]?", text)
+    return matches[-1] if matches else ""
+
+
+def _detect_artigo_intro(text: str) -> str:
+    """Extrai a frase introdutória do último artigo no chunk.
+    Ex: 'Art. 18. O titular dos dados pessoais tem direito a obter do controlador'
+    Inclui até 120 chars depois do número do artigo para dar contexto semântico.
+    Ignora entradas de sumário (reticências: 'Art. 62 .........').
+    """
+    matches = list(re.finditer(r"Art\.?\s*\d+[º°]?\.\s*([^\n]{10,120})", text))
+    for m in reversed(matches):
+        intro = m.group(1).strip()
+        # Ignora se a "intro" é majoritariamente reticências ou caracteres de tabela
+        letras = sum(1 for c in intro if c.isalpha())
+        if letras >= 10:
+            return m.group(0)[:120].strip()
+    return ""
 
 
 def _chunk_id(text: str, source: str, page: int, chunk_index: int) -> str:
