@@ -44,12 +44,13 @@ CONTEXTO:
 
 PERGUNTA: {pergunta}
 
-Responda SOMENTE em JSON válido, sem markdown, sem ```json:
+Responda SOMENTE em JSON válido, sem markdown, sem ```json.
+Preencha os campos NESTA ORDEM exata:
 {{
-  "resposta": "...",
-  "fontes": [{{"documento": "...", "pagina": 0, "artigo": "..."}}],
+  "base_suficiente": true,
   "confianca": 0.0,
-  "base_suficiente": true
+  "resposta": "...",
+  "fontes": [{{"documento": "...", "pagina": 0, "artigo": "..."}}]
 }}
 """
 
