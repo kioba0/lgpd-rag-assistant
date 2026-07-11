@@ -6,4 +6,6 @@ pypdf==5.1.0
 python-dotenv==1.0.1
 streamlit==1.41.1
 langchain-text-splitters==0.3.4
-matplotlib==3.10.0
+matplotlib>=3.9.0
+python-pptx==1.0.2
+pytest

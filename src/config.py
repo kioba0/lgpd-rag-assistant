@@ -7,7 +7,6 @@ load_dotenv()
 # Paths
 ROOT_DIR = Path(__file__).parent.parent
 DATA_RAW_DIR = ROOT_DIR / "data" / "raw"
-DATA_PROCESSED_DIR = ROOT_DIR / "data" / "processed"
 CHROMA_DIR = ROOT_DIR / "chroma_db"
 EVAL_DIR = ROOT_DIR / "eval"
 RESULTS_DIR = EVAL_DIR / "results"
@@ -24,8 +23,11 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 80
 
 # Retrieval
-TOP_K = 4
-MIN_SCORE = 0.3  # abaixo disso → base_suficiente = False antes de chamar o LLM
+TOP_K = 6
+MIN_SCORE = 0.22  # abaixo disso → base_suficiente = False antes de chamar o LLM
+HYBRID_ALPHA = 0.85  # peso do score semântico vs. keyword (1.0 = só semântico)
+                     # 0.85: BM25 com 15% de peso — beneficia termos específicos
+                     # sem prejudicar queries em inglês (BM25=0 → hybrid=0.85×sem)
 
 # Gemini
 GEMINI_MODEL = "gemini-flash-lite-latest"
