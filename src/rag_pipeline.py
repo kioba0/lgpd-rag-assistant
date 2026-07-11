@@ -8,14 +8,6 @@ from llm import call_gemini
 from retriever import Match, search
 from validator import RespostaLGPD, parse_and_validate
 
-_RECUSA_JSON = """{
-  "resposta": "A base documental disponível não contém informação suficiente para responder esta pergunta com segurança.",
-  "fontes": [],
-  "confianca": 0.0,
-  "base_suficiente": false
-}"""
-
-
 def query(pergunta: str, top_k: int = TOP_K) -> dict:
     """
     Pipeline RAG completo.

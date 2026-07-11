@@ -3,7 +3,11 @@ import time
 from pathlib import Path
 
 import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted
+from google.api_core.exceptions import (
+    DeadlineExceeded,
+    ResourceExhausted,
+    ServiceUnavailable,
+)
 
 sys.path.insert(0, str(Path(__file__).parent))
 from config import GEMINI_API_KEY, GEMINI_MODEL
@@ -20,7 +24,7 @@ def _call_with_backoff(model, prompt, config):
     for attempt, delay in enumerate(_RETRY_DELAYS, 1):
         try:
             return model.generate_content(prompt, generation_config=config)
-        except ResourceExhausted:
+        except (ResourceExhausted, ServiceUnavailable, DeadlineExceeded):
             if attempt == _MAX_RETRIES:
                 raise
             print(f"  Rate limit — aguardando {delay}s antes de tentar novamente ({attempt}/{_MAX_RETRIES})...")

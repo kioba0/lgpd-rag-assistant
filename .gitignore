@@ -5,5 +5,3 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
-eval/results/*.csv
-eval/results/*.png

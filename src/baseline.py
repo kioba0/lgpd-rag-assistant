@@ -16,4 +16,9 @@ def query(pergunta: str) -> dict:
     return {
         "resposta": resposta,
         "latencia_ms": int((time.time() - t0) * 1000),
+        "base_suficiente": None,
+        "confianca": None,
+        "fontes": [],
+        "erro": None,
+        "matches": [],
     }

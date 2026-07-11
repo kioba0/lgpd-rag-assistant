@@ -105,7 +105,7 @@ def run() -> list[dict]:
         }
         resultados.append(resultado)
 
-        status = "✅" if (caso["deve_recusar"] == (not rag_base)) else "❌"
+        status = "OK" if (caso["deve_recusar"] == (not rag_base)) else "ERRO"
         print(f"  {status} suficiente={rag_base} | conf={rag_conf} | {rag_lat}ms | overlap={overlap:.2f}")
 
         time.sleep(_PAUSE_ENTRE_CASOS)

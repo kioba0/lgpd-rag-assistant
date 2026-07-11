@@ -81,7 +81,7 @@ def parse_and_validate(raw: str, matches: list[Match]) -> tuple[Optional[Respost
         partes = [p.strip().rstrip(")") for p in partes if p.strip()]
         # Só verifica partes que parecem referências de artigo (contêm "art" ou números)
         partes_artigo = [p for p in partes if re.search(r"art\.?|\d", p, re.IGNORECASE)]
-        if partes_artigo and not all(_normalizar(p) in chunks_text_norm for p in partes_artigo):
+        if partes_artigo and not all(re.search(rf"(?:^|\W){re.escape(_normalizar(p))}(?:\W|$)", chunks_text_norm) for p in partes_artigo):
             resposta.confianca = min(resposta.confianca, 0.4)
 
     return resposta, ""

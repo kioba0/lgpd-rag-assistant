@@ -6,8 +6,16 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent))
 import baseline
 import rag_pipeline
+import retriever
 
 st.set_page_config(page_title="Assistente LGPD", page_icon="⚖️", layout="wide")
+
+try:
+    retriever.get_collection()
+except Exception:
+    st.error("Base vetorial não encontrada. Execute `python src/ingest.py` antes de usar o assistente.")
+    st.stop()
+
 st.title("⚖️ Assistente de Consulta sobre LGPD")
 st.caption("Base: Lei 13.709/2018 + Resoluções e Guias da ANPD")
 
@@ -15,7 +23,7 @@ st.caption("Base: Lei 13.709/2018 + Resoluções e Guias da ANPD")
 with st.sidebar:
     st.header("Configurações")
     modo = st.radio("Modo de resposta", ["RAG (com contexto)", "LLM Direto (baseline)"])
-    top_k = st.slider("Chunks recuperados (top-k)", min_value=2, max_value=8, value=4)
+    top_k = st.slider("Chunks recuperados (top-k)", min_value=2, max_value=12, value=6)
     mostrar_chunks = st.checkbox("Mostrar chunks recuperados", value=False)
     st.divider()
     st.caption("**RAG:** recupera trechos relevantes antes de gerar a resposta.")

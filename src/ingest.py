@@ -6,6 +6,7 @@ from pathlib import Path
 import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
+import functools
 from sentence_transformers import SentenceTransformer
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -18,15 +19,10 @@ from config import (
     EMBEDDING_MODEL,
 )
 
-_embedder: SentenceTransformer | None = None
-
-
+@functools.lru_cache(maxsize=1)
 def get_embedder() -> SentenceTransformer:
-    global _embedder
-    if _embedder is None:
-        print(f"Carregando modelo de embedding '{EMBEDDING_MODEL}'...")
-        _embedder = SentenceTransformer(EMBEDDING_MODEL)
-    return _embedder
+    print(f"Carregando modelo de embedding '{EMBEDDING_MODEL}'...")
+    return SentenceTransformer(EMBEDDING_MODEL)
 
 
 def load_document(path: Path) -> list[dict]:
