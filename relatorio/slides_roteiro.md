@@ -123,18 +123,23 @@ Testamos dois modelos de embedding para a mesma query em português:
 
 **Conteúdo:**
 ```
-Pergunta → SBERT (384 dim) → Chroma (cosine similarity) → top-4 chunks
+Pergunta → SBERT (384 dim) → Chroma: 150 candidatos
                                         ↓
-                              score < 0,3 → recusa direta
-                              (sem chamar o LLM)
+                              BM25 (keywords) + cosine (semântico)
+                              hybrid = 0,85 × sem + 0,15 × bm25
+                                        ↓
+                              re-rank → top-6
+                                        ↓
+                              score < 0,22 → recusa direta
 ```
 
-- Mesma família de modelo para indexar e para consultar (dimensão tem que bater: 384)
-- **top-k = 4** por padrão; testamos 3 e 8 nos experimentos
-- **Threshold de score (0,3):** se nenhum chunk superar esse valor, o sistema recusa antes mesmo de chamar o LLM — economiza tempo e quota de API
+- Mesma família de modelo para indexar e para consultar (dimensão: 384)
+- **Busca híbrida:** pool de 150 candidatos, re-ranking com BM25 (15%) + semântico (85%)
+- **top-k = 6** por padrão (slider 2-12 no Streamlit); testamos 2 a 8
+- **Threshold MIN_SCORE = 0,22:** recusa antes do LLM quando contexto é irrelevante
 
 **Fala:**
-> "A pergunta do usuário passa pelo mesmo modelo de embedding que indexou os documentos. O Chroma calcula a similaridade cosseno e retorna os 4 chunks mais próximos. Se o melhor score for abaixo de 0,3 — ou seja, nenhum chunk é remotamente relevante — o sistema recusa antes de gastar uma chamada ao LLM. Isso é eficiente e foi o que impediu o sistema de responder perguntas sobre imposto de renda."
+> "O sistema vai além da busca semântica pura. Primeiro recupera 150 candidatos do ChromaDB. Depois calcula um score de keywords com BM25 — que encontra termos jurídicos específicos como 'advertência', 'dosimetria', 'cookies'. Combina os dois com peso 85% semântico + 15% keywords e re-ordena. Isso resolveu o problema das sanções — que com busca puramente semântica não aparecia no top-4."
 
 ---
 
@@ -233,10 +238,17 @@ ou étnica, convicção religiosa, opinião política...
 ```
 Score subiu de **0,74 → 0,89**. Caso passou de recusa para `base_suficiente = true`.
 
-**Limitação residual:** sanções do Art. 52 ainda falham — incisos da lista ficam na posição 9+ no ranking global porque outros documentos sobre sanções competem com scores mais altos. Solução definitiva: hybrid search (BM25 + semântico).
+**Resolução via busca híbrida:**
+```python
+# Com semântico puro: sanções ficavam na posição 9+ do ranking
+# Com híbrido (BM25 + semântico): BM25 detecta "sanções", "aplicar" → sobe para top-3
+# Resultado: base_suficiente = true, confiança 100%
+```
+
+**Limitação residual após o fix:** phrasing coloquial ainda sofre — "o que fala a LGPD" não mapeia bem para "Esta Lei dispõe sobre...". Solução: chunking estrutural por artigo.
 
 **Fala:**
-> "Identificamos o problema, implementamos a correção de prefixo contextual — e resolvemos a maioria dos casos. O que ficou de fora foi a lista de sanções do Art. 52, onde a competição com outros documentos sobre o mesmo tema ainda derruba o chunk certo para baixo do top-4. Esse é o limite que documentamos como trabalho futuro."
+> "O problema das sanções foi resolvido com busca híbrida — implementamos depois de identificar que o BM25 encontra os termos específicos que o semântico não encontrava. Ainda há limitação com phrasing coloquial, que documentamos como trabalho futuro."
 
 ---
 

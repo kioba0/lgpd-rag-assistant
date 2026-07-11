@@ -114,6 +114,19 @@ Cada chunk é armazenado com os seguintes metadados:
 
 **Idempotência:** o ID de cada chunk é calculado como `SHA-256(source|page|chunk_index|text)[:20]`. Re-executar a ingestão não duplica registros.
 
+### 3.6 Recuperação híbrida (BM25 + semântico)
+
+A versão final do sistema implementa **busca híbrida** em `src/retriever.py`. Em vez de retornar diretamente os top-k chunks por similaridade semântica, o sistema:
+
+1. Recupera um **pool de 150 candidatos** via cosine similarity no ChromaDB
+2. Calcula um **score BM25** (keyword matching) para cada candidato em relação à query
+3. Combina os dois scores: `hybrid = α × semântico + (1-α) × BM25`, com `α = 0,85`
+4. Re-ordena e retorna os **top-6** melhores pelo score híbrido
+
+**Motivação:** a busca puramente semântica falha em queries com termos jurídicos específicos que têm baixa cobertura no espaço de embeddings. Por exemplo, "Quais sanções a ANPD pode aplicar?" não mapeava para o chunk do Art. 3° da Resolução 4/2023 (que lista "advertência", "multa simples", "multa diária"...) — os scores semânticos dos chunks concorrentes eram superiores. Com o pool de 150 candidatos e BM25 com 15% de peso, o chunk correto passou a aparecer no top-6.
+
+**Escolha de α=0,85 (e não 0,70):** com α=0,70, queries em inglês teriam seus scores reduzidos para 70% do semântico (BM25=0 para tokens ingleses em corpus português), aumentando o risco de não atingir o MIN_SCORE. Com α=0,85, o impacto é de apenas 15% e o score permanece acima do limiar para queries multilíngues.
+
 ---
 
 ## 4. Arquitetura da solução
@@ -129,9 +142,10 @@ Cada chunk é armazenado com os seguintes metadados:
 ╔══════════════════════════════════════════════════════════╗
 ║  CONSULTA (online)                                       ║
 ║                                                          ║
-║  pergunta → SBERT → Chroma top-4 (cosine)                ║
+║  pergunta → SBERT → pool 150 candidatos →                ║
+║  BM25 + cosine (α=0,85) → re-rank → top-6               ║
 ║                │                                         ║
-║         score < 0,3? ──→ recusa direta (sem LLM)         ║
+║         score < 0,22? ──→ recusa direta (sem LLM)        ║
 ║                │                                         ║
 ║           monta prompt com contexto + instrução          ║
 ║                │                                         ║
@@ -167,6 +181,7 @@ A aplicação possui **dois modos** acessíveis via interface Streamlit (`src/ap
 | Embedding | Sentence Transformers multilíngue | `paraphrase-multilingual-MiniLM-L12-v2` v3.3.1 | Desempenho superior em português legal vs. modelo inglês (gap +0,149 no experimento de seleção) |
 | Vector store | ChromaDB | v0.6.3 | Zero infraestrutura; persistência nativa em disco; cosine similarity configurável |
 | Chunking | LangChain Text Splitters | `langchain-text-splitters` v0.3.4 | RecursiveCharacterTextSplitter com separadores customizados para texto jurídico |
+| Recuperação híbrida | BM25 + ChromaDB cosine | implementação própria | Pool de 150 candidatos, α=0,85 semântico + 0,15 BM25, top-6 final |
 | Validação | Pydantic | v2.10.4 | Schema estrito para o JSON de saída; regras de negócio declarativas |
 | PDF loader | pypdf | v5.1.0 | Extração de texto por página com metadado de número de página |
 | Interface | Streamlit | v1.41.1 | Frontend leve, demonstrável ao vivo |
@@ -180,7 +195,7 @@ A aplicação possui **dois modos** acessíveis via interface Streamlit (`src/ap
 | Versão | Descrição |
 |---|---|
 | **Baseline** | Gemini Flash Lite chamado diretamente, sem recuperação de contexto, sem validação estruturada. Prompt: *"Responda sobre LGPD e proteção de dados pessoais no Brasil: [pergunta]"* |
-| **RAG completo** | Pipeline completo: recuperação top-4 → prompt com contexto → Gemini → validação Pydantic → recusa quando base insuficiente |
+| **RAG completo** | Pipeline completo: recuperação híbrida top-6 (BM25 + semântico, pool 150) → prompt com contexto → Gemini → validação Pydantic → recusa quando base insuficiente |
 
 A comparação LLM-direto vs. LLM com RAG é o contraste principal, pois evidencia concretamente o valor da recuperação vetorial e da validação estruturada.
 
@@ -268,7 +283,7 @@ A comparação LLM-direto vs. LLM com RAG é o contraste principal, pois evidenc
 - **top-k=8 é o melhor** (75%), com latência similar ou menor que top-k=4 — prompts maiores não aumentaram significativamente o tempo de resposta neste modelo.
 - **Variação em top-k=5 e top-k=7** (58% e 62%) pode refletir variabilidade do LLM em decisões limítrofes (perguntas cujos chunks relevantes ficam na borda do ranking) e não representa uma tendência estrutural.
 
-**Decisão do parâmetro padrão:** mantemos top-k=4 como padrão da aplicação por clareza de documentação. O Streamlit expõe o slider de 2 a 8, permitindo que o usuário ajuste conforme a pergunta.
+**Decisão do parâmetro padrão:** o sistema usa top-k=6 como padrão após o merge da busca híbrida, que demonstrou que mais candidatos melhoram a cobertura sem penalidade significativa de latência. O Streamlit expõe o slider de 2 a 12.
 
 *Ver gráfico em `eval/results/grafico_topk.png`. Código: `eval/comparacoes_extras.py`.*
 
@@ -307,7 +322,7 @@ I - confirmação da existência de tratamento; II - acesso aos dados...
 
 O sistema também detecta títulos de seção numerados dos guias (ex: `2.3 Obrigações da LGPD sobre segurança da informação`) e os propaga como prefixo, resolvendo o mesmo problema para documentos não-legais.
 
-**Limitação residual:** perguntas sobre a lista de sanções do Art. 52 (`I - advertência, II - multa simples, III - multa diária...`) ainda falham porque os chunks com os incisos da lista ficam na posição 9+ no ranking global — outros documentos sobre sanções (dosimetria, regimento) competem com scores mais altos. A solução definitiva seria **hybrid search** (BM25 + semântico) ou **chunking estrutural por artigo** — documentados como trabalho futuro.
+**Resolução via busca híbrida:** a limitação das sanções foi resolvida com a implementação de busca híbrida (BM25 + semântico) com pool de 150 candidatos. A query "Quais sanções a ANPD pode aplicar?" passou a retornar `base_suficiente = true` com confiança 100% após o merge. O BM25 identificou os termos "sanções", "aplicar" e "ANPD" nos chunks da Resolução 4/2023 e os elevou no ranking.
 
 ### 8.2 Overconfidence e sua ausência
 
@@ -341,9 +356,9 @@ Durante a avaliação experimental, 9 dos 30 casos falharam com erro 429 (quota 
 
 ### 8.6 O que faríamos com mais tempo
 
-1. **Injeção de contexto de artigo em cada inciso** — melhoria direta na recuperação para artigos específicos
-2. **Re-ranking** — aplicar um segundo modelo (cross-encoder) para reordenar os chunks recuperados antes de montar o prompt
-3. **Chunking estrutural por artigo** — usar regex para identificar o início de cada artigo e tratá-lo como unidade atômica de chunking
+1. ~~**Busca híbrida (BM25 + semântico)**~~ — **implementado** (merge da branch-lulao, α=0,85, pool 150 candidatos)
+2. **Chunking estrutural por artigo** — usar regex para identificar o início de cada artigo e tratá-lo como unidade atômica de chunking
+3. **Re-ranking com cross-encoder** — aplicar um segundo modelo para reordenar os chunks recuperados antes de montar o prompt
 4. **LLM-juiz para faithfulness** — usar o próprio Gemini para avaliar se a resposta é fiel ao contexto recuperado
 5. **Embedding BGE-M3 ou E5-large-multilingual** — modelos com melhor desempenho documentado em português jurídico
 

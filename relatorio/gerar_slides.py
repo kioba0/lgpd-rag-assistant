@@ -408,34 +408,40 @@ def slide_recuperacao(prs):
     fundo(slide)
     barra_topo(slide)
     linha_acento(slide, Inches(0.9))
-    texto(slide, "Recuperação vetorial",
+    texto(slide, "Recuperação híbrida (BM25 + semântico)",
           Inches(0.4), Inches(0.1), Inches(12.5), Inches(0.75),
           size=28, bold=True, cor=BRANCO)
 
-    # Fluxo compacto
-    for i, (lbl, cor) in enumerate([("Pergunta\n→ vetor SBERT", AZUL_ESCURO),
-                                     ("Chroma\ncosine similarity", AZUL),
-                                     ("top-k chunks\nmais próximos", AZUL_ESCURO)]):
-        left = Inches(0.5 + i * 4.1)
-        retangulo(slide, left, Inches(1.1), Inches(3.7), Inches(0.9), cor)
-        texto(slide, lbl, left, Inches(1.15), Inches(3.7), Inches(0.85),
-              size=16, bold=True, cor=BRANCO, align=PP_ALIGN.CENTER)
-        if i < 2:
-            texto(slide, "→", Inches(4.2 + i * 4.1), Inches(1.35),
-                  Inches(0.4), Inches(0.4), size=20, bold=True, cor=AZUL_CLARO)
+    # Fluxo híbrido
+    etapas = [("Pergunta\n→ SBERT", AZUL_ESCURO),
+              ("150 candidatos\nChroma cosine", AZUL),
+              ("BM25\nkeywords", AZUL),
+              ("Re-rank\ntop-6", AZUL_ESCURO)]
+    for i, (lbl, cor) in enumerate(etapas):
+        left = Inches(0.4 + i * 3.2)
+        retangulo(slide, left, Inches(1.1), Inches(2.8), Inches(0.85), cor)
+        texto(slide, lbl, left, Inches(1.15), Inches(2.8), Inches(0.8),
+              size=15, bold=True, cor=BRANCO, align=PP_ALIGN.CENTER)
+        if i < len(etapas) - 1:
+            texto(slide, "→", Inches(3.2 + i * 3.2), Inches(1.35),
+                  Inches(0.2), Inches(0.35), size=18, bold=True, cor=AZUL_CLARO)
+
+    # Badge de fórmula
+    retangulo(slide, Inches(0.5), Inches(2.15), Inches(12.3), Inches(0.55),
+              RGBColor(0x14, 0x3A, 0x5C))
+    texto(slide, "hybrid = 0,85 × semântico + 0,15 × BM25   |   score < 0,22 → recusa antes do LLM",
+          Inches(0.65), Inches(2.22), Inches(12.0), Inches(0.4),
+          size=15, bold=True, cor=AZUL_CLARO, align=PP_ALIGN.CENTER)
 
     texto_multi(slide, [
-        "• A pergunta é vetorizada pelo **mesmo modelo** de embedding (384 dim)",
-        "• Chroma usa **cosine similarity** — `score = 1 − (distância / 2)`",
+        "• **Por que híbrido?** Semântico puro falha em termos jurídicos específicos",
+        '   Ex: "sanções a ANPD" → BM25 detecta "sanções", "aplicar" nos chunks da Resolução 4/2023',
+        "   Com semântico puro: chunk correto na posição 9+ · Com híbrido: top-3 ✅",
         "",
-        "• **Threshold MIN_SCORE = 0,3:** score abaixo → recusa **antes** de chamar o LLM",
-        "   Economiza quota de API · bloqueia perguntas fora do domínio automaticamente",
-        "",
-        "• **top-k = 4** por padrão (slider de 2 a 8 no Streamlit)",
-        "   top-k=8 melhora cobertura para 75% com latência similar",
-        "",
-        "• Cada match retorna: texto · score · documento · página · artigo detectado",
-    ], Inches(0.5), Inches(2.2), Inches(12.3), Inches(5.1), size=17)
+        "• **Pool de 150 candidatos** garante que o chunk certo esteja disponível para re-ranking",
+        "• **α=0,85** (não 0,70): queries em inglês têm BM25=0 → score = 0,85 × semântico (ainda alto)",
+        "• **top-k = 6** padrão · slider 2-12 no Streamlit · cada match retorna texto, score, fonte, artigo",
+    ], Inches(0.5), Inches(2.9), Inches(12.3), Inches(4.4), size=17)
 
 
 def slide_validacao(prs):
@@ -630,13 +636,13 @@ def slide_falha_principal(prs):
             texto(slide, lbl, left, Inches(4.98), Inches(3.0), Inches(0.4),
                   size=13, cor=BRANCO, align=PP_ALIGN.CENTER)
 
-    # Limitação residual
+    # Resolução via híbrido
     retangulo(slide, Inches(0.5), Inches(5.6), Inches(12.3), Inches(0.65),
-              RGBColor(0xFD, 0xF2, 0xE3), line_cor=LARANJA, line_width=1)
-    texto(slide, "⚠️  Limitação residual: sanções do Art. 52 ainda falham (chunks na posição 9+ do ranking global). "
-                 "Solução definitiva: hybrid search (BM25 + semântico).",
+              RGBColor(0xE9, 0xF7, 0xEF), line_cor=VERDE, line_width=1)
+    texto(slide, "✅  Sanções resolvidas com busca híbrida (BM25 + semântico, pool 150): "
+                 "\"Quais sanções a ANPD pode aplicar?\" → base_suficiente=true, confiança 100%.",
           Inches(0.65), Inches(5.67), Inches(12.0), Inches(0.5),
-          size=14, cor=RGBColor(0x7D, 0x4A, 0x00))
+          size=14, cor=RGBColor(0x1A, 0x6B, 0x3A))
 
 
 def slide_outros_achados(prs):
