@@ -136,25 +136,22 @@ Luiza Limoeiro
 % -------------------------------------------------------------------
 \section{Definição do Problema}
 
-A Lei Geral de Proteção de Dados Pessoais (LGPD — Lei n.º 13.709/2018) e as
-regulamentações complementares da Autoridade Nacional de Proteção de Dados (ANPD)
-compõem um conjunto normativo extenso e técnico. Profissionais de diferentes áreas
-— jurídica, de tecnologia, de \textit{compliance} e de gestão — frequentemente precisam
-consultar esse material para responder perguntas como ``Quais são as bases legais para
-tratar dados de clientes?'' ou ``O que a ANPD exige ao nomear um encarregado?''.
+A Lei Geral de Proteção de Dados Pessoais (LGPD, Lei n.º 13.709/2018) e as
+regulamentações da Autoridade Nacional de Proteção de Dados (ANPD) formam um conjunto
+normativo extenso. Profissionais de TI, jurídico, compliance e gestão consultam esse
+material com frequência para responder perguntas como ``Quais são as bases legais para
+tratar dados de clientes?'' ou ``O que a ANPD exige para nomear um encarregado?''.
 
-O problema prático que motivou este trabalho é que \textbf{Modelos de Linguagem de
-Grande Escala (LLMs) aplicados diretamente a esse tipo de consulta apresentam
-limitações sérias}: produzem respostas fluentes e convincentes, mas frequentemente
+O problema prático que motivou este trabalho é que \textbf{LLMs usados diretamente
+nesse tipo de consulta produzem respostas fluentes mas frequentemente incorretas}:
 inventam números de artigos, confundem datas de resolução ou generalizam onde a norma
-é específica. Como discutido em aula, a fluência textual de um LLM não é garantia de
-correção factual — o modelo estima sequências prováveis de tokens, não consulta fatos.
+é específica. Como visto em aula, fluência textual não é garantia de correção factual,
+pois o modelo estima sequências prováveis de tokens e não consulta fatos.
 
-O objetivo deste trabalho é construir uma aplicação que \textbf{responda perguntas
-sobre LGPD de forma fundamentada}: recuperando os trechos normativos relevantes antes
-de gerar a resposta, citando as fontes que sustentam cada afirmação e reconhecendo
-explicitamente quando a base documental não é suficiente. O foco não é apenas
-responder bem, mas responder com rastreabilidade e honestidade sobre os próprios limites.
+O objetivo foi construir uma aplicação que \textbf{responda perguntas sobre LGPD de
+forma fundamentada}: recuperando os trechos normativos relevantes antes de gerar a
+resposta, citando as fontes de cada afirmação e admitindo quando a base não é
+suficiente.
 
 % -------------------------------------------------------------------
 % 2. BASE DOCUMENTAL
@@ -200,10 +197,10 @@ três limiares do edital (15 documentos \textbf{ou} 40 páginas \textbf{ou} 80
 \subsection{Decisão de curadoria}
 
 O arquivo \texttt{processo\_integra\_resolucao\_cd\_anpd\_18\_2024.pdf} (27 MB) foi
-excluído porque o portal ANPD publica o processo completo de elaboração da norma —
-incluindo atas, despachos e documentos internos — em vez da resolução isolada. Inserir
-esse volume geraria ruído significativo e comprometeria a qualidade da recuperação. A
-limitação é documentada na Seção~\ref{sec:critica}.
+excluído porque o portal ANPD publica o processo completo de elaboração da norma
+(atas, despachos e documentos internos) em vez da resolução isolada. Inserir esse
+volume introduziria ruído e comprometeria a qualidade da recuperação. A
+limitação é discutida na Seção~\ref{sec:critica}.
 
 % -------------------------------------------------------------------
 % 3. PIPELINE DE INGESTÃO
@@ -239,11 +236,11 @@ Estratégia adotada: \textbf{RecursiveCharacterTextSplitter} da biblioteca
 
 O separador \texttt{"\textbackslash{}n\textbackslash{}nArt."} foi definido como
 prioridade máxima para preservar artigos íntegros dentro de cada \textit{chunk},
-evitando que o início de um artigo fique no final de um \textit{chunk} e seu
-conteúdo no início do próximo. O \textit{overlap} de 80 caracteres (~16\% do
-tamanho do \textit{chunk}) garante que o contexto final de um \textit{chunk} seja
-repetido no início do seguinte, reduzindo a perda de informação em quebras — valor
-que o material de aula aponta como razoável para textos estruturados.
+evitando que o início de um artigo fique no final de um \textit{chunk} e seu conteúdo
+no início do próximo. O \textit{overlap} de 80 caracteres (\textasciitilde{}16\% do
+tamanho do \textit{chunk}) faz com que o contexto do final de um \textit{chunk}
+se repita no começo do seguinte, reduzindo a perda de informação nas bordas. Esse
+valor segue o padrão adotado nos exemplos de aula para textos estruturados.
 
 O tamanho de 500 caracteres foi escolhido para caber 1 a 2 artigos curtos por
 \textit{chunk} sem ultrapassar a janela de contexto efetiva do modelo de
@@ -423,14 +420,13 @@ Figura~\ref{fig:arch}.
 \fonte{Elaborado pelos autores.}
 \end{figure}
 
-A aplicação disponibiliza \textbf{dois modos} via interface Streamlit
-(\texttt{src/app.py}):
+A aplicação tem dois modos acessíveis pela interface Streamlit (\texttt{src/app.py}):
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{RAG completo} — pipeline descrito acima, com citação de fontes e
-        recusa explícita;
-  \item \textbf{LLM Direto (\textit{baseline})} — chamada direta ao Gemini sem
-        contexto externo, para comparação experimental.
+  \item \textbf{RAG completo:} pipeline descrito acima, com citação de fontes e
+        recusa explícita quando a base não cobre a pergunta;
+  \item \textbf{LLM Direto (\textit{baseline}):} chamada direta ao Gemini sem
+        contexto externo, usado para comparação experimental.
 \end{itemize}
 
 % -------------------------------------------------------------------
@@ -463,20 +459,21 @@ Interface        & Streamlit                      & Frontend leve, demonstrável
 \subsection{Justificativa do modelo de \textit{embedding}}
 \label{ssec:emb}
 
-Inicialmente utilizou-se \texttt{all-MiniLM-L6-v2}, treinado predominantemente em
-inglês. Ao testar a recuperação, observou-se que esse modelo \textbf{invertia a
-ordem de relevância} para textos jurídicos em português: a \textit{query} ``bases
-legais para tratamento de dados pessoais'' produzia \textit{score} 0,547 para o
-\textit{chunk} com a definição do Art.~7.º e \textit{score} 0,582 para um
-\textit{chunk} não relacionado — o documento irrelevante ficava à frente.
+O grupo começou com \texttt{all-MiniLM-L6-v2}, treinado predominantemente em inglês.
+Nos primeiros testes de recuperação, esse modelo \textbf{invertia a ordem de
+relevância} para textos jurídicos em português: a \textit{query} ``bases legais para
+tratamento de dados pessoais'' produzia \textit{score} 0,547 para o \textit{chunk}
+com a definição do Art.~7.º e 0,582 para um \textit{chunk} não relacionado, ou seja,
+o documento errado ficava na frente.
 
 A troca para \texttt{paraphrase-multilingual-MiniLM-L12-v2} reverteu esse
-comportamento (0,705 \textit{vs.} 0,557), com \textit{gap} de +0,149. A troca foi
-necessária para que o \textit{pipeline} funcionasse corretamente em português.
+comportamento (0,705 \textit{vs.} 0,557, diferença de +0,149) e foi necessária para
+que o sistema funcionasse corretamente em português.
 
-O modelo de \textit{embedding} é propositalmente \textbf{diferente do LLM gerador}
-(Google Gemini), demonstrando que representação semântica e geração de texto podem
-ser desempenhadas por componentes independentes de fornecedores distintos.
+Vale destacar que o modelo de \textit{embedding} é de um \textbf{fornecedor diferente
+do LLM gerador} (Google Gemini). Isso mostra que representação semântica e geração de
+texto podem ser tratadas por componentes independentes, o que dá mais flexibilidade à
+arquitetura.
 
 % -------------------------------------------------------------------
 % 6. PROTOCOLO EXPERIMENTAL
@@ -712,68 +709,66 @@ gerou 20\% menos \textit{chunks} (menos ruído no índice).
 
 \subsection{Chunking fragmenta artigos jurídicos}
 
-O problema mais frequente observado foi o seguinte: a LGPD estrutura seu conteúdo em
-artigos com múltiplos incisos. Após a segmentação com \texttt{chunk\_size=500}, cada
-inciso frequentemente formou um \textit{chunk} separado \textbf{sem o cabeçalho do
-artigo ao qual pertence}.
+A LGPD é estruturada em artigos com múltiplos incisos. Após a segmentação com
+\texttt{chunk\_size=500}, cada inciso frequentemente formou um \textit{chunk}
+separado \textbf{sem o cabeçalho do artigo ao qual pertence}.
 
 \textbf{Exemplo concreto:} o inciso I do Art.~18 gerou \textit{chunks} iniciados com
-``I - confirmação da existência de tratamento;'' sem qualquer referência ao Art.~18.
-\textit{Score} cosine para a \textit{query} ``direitos do titular de dados pessoais'':
-\textbf{0,74} — abaixo de \textit{chunks} de guias menos relevantes.
+``I - confirmação da existência de tratamento;'' sem nenhuma referência ao Art.~18. O
+\textit{score} cosine para a \textit{query} ``direitos do titular de dados pessoais''
+ficou em \textbf{0,74}, abaixo de \textit{chunks} de guias menos relevantes.
 
-\textbf{Solução implementada:} sistema de prefixo contextual (Seção~3.4). Após o
-\textit{fix}, o \textit{score} subiu de \textbf{0,74 → 0,89} e o caso passou de
-\texttt{base\_suficiente = false} para \texttt{true} com confiança 100\%.
+\textbf{Solução:} sistema de prefixo contextual (Seção~3.4). Após a correção, o
+\textit{score} subiu de \textbf{0,74 para 0,89} e o caso passou de
+\texttt{base\_suficiente = false} para \texttt{true} com confiança de 100\%.
 
-\textbf{Resolução das sanções via busca híbrida:} a \textit{query} ``Quais sanções a
-ANPD pode aplicar?'' não mapeava para o \textit{chunk} da Resolução 4/2023 com busca
-semântica pura. Com BM25, os termos ``sanções'', ``aplicar'' e ``ANPD'' elevaram o
-\textit{chunk} correto ao top-6, resolvendo o caso.
+\textbf{Caso das sanções:} a \textit{query} ``Quais sanções a ANPD pode aplicar?''
+não encontrava o \textit{chunk} da Resolução 4/2023 com busca semântica pura. Com a
+busca híbrida, o BM25 identificou os termos ``sanções'', ``aplicar'' e ``ANPD'' e
+elevou o \textit{chunk} correto ao top-6.
 
-\textbf{Limitação residual:} \textit{phrasing} coloquial ainda sofre — ``o que fala
-a LGPD'' não mapeia bem para ``Esta Lei dispõe sobre\ldots''. Solução futura:
-\textit{chunking} estrutural por artigo.
+\textbf{Limitação que permanece:} linguagem coloquial ainda causa problemas. A
+pergunta ``o que fala a LGPD'' não mapeia bem para ``Esta Lei dispõe sobre\ldots''.
+Uma solução seria \textit{chunking} estrutural por artigo.
 
 \subsection{\textit{Overconfidence} e mitigação parcial}
 
-O professor destacou em aula o risco de \textit{overconfidence}: o modelo expressa
-confiança alta mesmo quando erra. O mecanismo implementado — comparar os artigos
-citados na resposta com os artigos presentes nos \textit{chunks} recuperados —
-mitigou parcialmente esse problema. Quando o modelo citou um artigo ausente da
-evidência recuperada, o campo \texttt{confianca} foi automaticamente limitado a 0,4.
+\textit{Overconfidence} é o comportamento em que o modelo expressa confiança alta
+mesmo quando erra. Para mitigar isso, o sistema compara os artigos citados na resposta
+com os artigos presentes nos \textit{chunks} recuperados. Quando o modelo cita um
+artigo que não aparece na evidência recuperada, o campo \texttt{confianca} é
+automaticamente reduzido a 0,4.
 
-Entretanto, a camada de validação não detecta respostas em que o modelo
-\textbf{parafraseia incorretamente} um trecho sem citar artigo. Nesses casos, a
-resposta parece fundamentada mas pode divergir do texto normativo. Para detecção
-completa seria necessário um LLM-juiz para \textit{faithfulness scoring} — não
-implementado por restrições de custo de API.
+No entanto, a camada de validação não detecta respostas em que o modelo
+\textbf{parafraseia incorretamente} um trecho sem citar artigo algum. Nesses casos a
+resposta pode parecer fundamentada mas divergir do texto normativo. Detectar isso
+exigiria um LLM-juiz para \textit{faithfulness scoring}, o que não foi implementado
+por restrições de custo de API.
 
 \subsection{Fluência $\neq$ Correção}
 
-O \textit{baseline} produz respostas mais longas, bem formatadas e aparentemente mais
-completas. Um avaliador humano sem acesso ao texto da lei poderia avaliá-las como
-superiores — exemplo direto do fenômeno de \textbf{fluência $\neq$ correção}
-discutido em aula.
+O \textit{baseline} produz respostas mais longas e aparentemente mais completas. Sem
+acesso ao texto da lei, é difícil perceber que elas podem estar erradas. Esse é um
+exemplo do que foi discutido em aula: \textbf{fluência não implica correção}.
 
-No caso do prazo para comunicação de incidentes, o \textit{baseline} respondeu com
-confiança sobre ``prazo razoável'' — tecnicamente não errado em relação ao texto base
-da LGPD, mas omitindo que a ANPD já regulamentou prazos específicos. O RAG recusou
-honestamente. Em domínios jurídicos, a recusa honesta é mais segura que a resposta
-vaga.
+No caso do prazo para comunicação de incidentes, o \textit{baseline} falou em ``prazo
+razoável'', o que não está errado em relação ao texto base da LGPD, mas ignora que a
+ANPD já regulamentou um prazo específico. O RAG admitiu não ter essa informação. Em
+contextos jurídicos, uma recusa clara é mais útil do que uma resposta incompleta
+apresentada com confiança.
 
 \subsection{Instrução de \textit{prompt} vs. restrição por evidência}
 
-O \textit{prompt} do \textit{baseline} inclui a instrução ``Responda sobre LGPD e
-proteção de dados pessoais no Brasil:'' antes de cada pergunta. Isso \textbf{orienta}
-o modelo mas não o \textbf{restringe}. Testado com ``me fale as regras de trânsito'',
-o \textit{baseline} produziu uma resposta híbrida — parte LGPD, parte trânsito — sem
-nenhuma recusa.
+O \textit{prompt} do \textit{baseline} começa com ``Responda sobre LGPD e proteção de
+dados pessoais no Brasil:'', o que orienta o modelo mas não o restringe. Testado com
+``me fale as regras de trânsito'', o \textit{baseline} produziu uma resposta misturada
+(parte LGPD, parte trânsito) sem nenhuma recusa.
 
-O RAG retornou \texttt{base\_suficiente = false} porque nenhum \textit{chunk} da
-base teve \textit{score} suficiente para ``regras de trânsito''. \textbf{A restrição
-emerge da evidência, não da instrução} — o mesmo mecanismo que bloqueou a injeção de
-\textit{prompt} funciona automaticamente para qualquer domínio fora da base.
+O RAG retornou \texttt{base\_suficiente = false} porque nenhum \textit{chunk} teve
+\textit{score} suficiente para ``regras de trânsito''. A restrição do RAG vem da
+evidência, não da instrução de \textit{prompt}. Por isso o mesmo mecanismo que
+bloqueia perguntas fora do domínio também bloqueia tentativas de \textit{prompt
+injection}, sem nenhum código específico para isso.
 
 \subsection{Seleção do modelo de \textit{embedding}: inglês vs. multilíngue}
 
@@ -816,28 +811,24 @@ A busca híbrida BM25+semântico, originalmente listada como trabalho futuro, fo
 % -------------------------------------------------------------------
 \section{Conclusão}
 
-Este trabalho construiu uma aplicação RAG funcional para consultas sobre LGPD e
-regulamentações da ANPD, demonstrando concretamente três aprendizados centrais da
-disciplina:
+O trabalho resultou em um sistema RAG funcional para consultas sobre LGPD e normas
+da ANPD. Três pontos ficaram claros durante o desenvolvimento:
 
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{A parte mais fácil de uma aplicação com LLM é fazer a chamada ao
-        modelo.} A parte mais importante — e mais difícil — é projetar o sistema ao
-        redor: a curadoria da base, o \textit{chunking} que preserva contexto, o
-        modelo de \textit{embedding} adequado ao idioma e a validação que impede
-        respostas mal fundamentadas.
+  \item \textbf{Fazer a chamada ao modelo é a parte mais simples.} O que exige mais
+        esforço é o que fica ao redor: curadoria da base, \textit{chunking} que
+        preserve contexto, modelo de \textit{embedding} adequado ao idioma e validação
+        da saída.
 
   \item \textbf{RAG reduz alucinação, mas não a elimina.} A taxa de recusa correta
-        de 100\% em perguntas fora da base é um resultado positivo, mas 33\% das
-        perguntas que deveriam ter resposta foram incorretamente recusadas por
-        limitações de \textit{chunking}. Um \textit{pipeline} RAG bem projetado
-        requer iteração em cada etapa.
+        foi 100\% para perguntas fora da base, mas 33\% das perguntas que deveriam ter
+        resposta foram incorretamente recusadas por problemas de \textit{chunking}. Um
+        bom \textit{pipeline} RAG exige iteração em cada etapa.
 
-  \item \textbf{Fluência não é correção.} O \textit{baseline} produzia respostas mais
-        longas e aparentemente mais completas, mas sem fundamentação verificável. Em
-        domínios jurídicos e regulatórios, onde uma informação imprecisa pode gerar
-        decisões equivocadas, a honestidade sobre os limites é mais valiosa que uma
-        resposta sempre disponível.
+  \item \textbf{Fluência não é correção.} O \textit{baseline} gerava respostas mais
+        longas e aparentemente mais completas, mas sem base factual verificável. Em
+        domínios jurídicos, admitir que não se sabe é melhor do que responder com
+        confiança e errar.
 \end{enumerate}
 
 % -------------------------------------------------------------------
@@ -904,9 +895,8 @@ Acesso em: jul. 2026.
 \section*{Uso de Inteligência Artificial Generativa}
 \addcontentsline{toc}{section}{Uso de Inteligência Artificial Generativa}
 
-Este trabalho utilizou Claude Code (Anthropic) como ferramenta de apoio nas etapas
-descritas abaixo. Em todos os casos, o grupo realizou revisão e validação humana
-antes de incorporar qualquer saída ao trabalho final.
+Este trabalho utilizou Claude Code (Anthropic) como ferramenta de apoio. O grupo
+revisou o que foi gerado em cada etapa antes de incorporar ao trabalho.
 
 \begin{table}[H]
 \caption{Etapas com uso de IA generativa e revisão humana realizada}
@@ -926,8 +916,7 @@ Relatório & Rascunho inicial das seções & O grupo verificou todos os dados nu
 \fonte{Elaborado pelos autores.}
 \end{table}
 
-O grupo é responsável por todo o conteúdo entregue, compreende a arquitetura, a
-ingestão, a recuperação, a validação, os experimentos e os resultados, e está
-preparado para defender qualquer decisão técnica na apresentação oral.
+O grupo entende a arquitetura, a ingestão, a recuperação, a validação e os
+experimentos, e está preparado para defender as decisões técnicas na apresentação.
 
 \end{document}
