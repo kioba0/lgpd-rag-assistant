@@ -321,14 +321,14 @@ por similaridade semântica, o sistema executa:
         cada candidato em relação à \textit{query};
   \item Combina os dois \textit{scores}: $\text{híbrido} = \alpha \cdot
         \text{semântico} + (1-\alpha) \cdot \text{BM25}$, com $\alpha = 0{,}85$;
-  \item Re-ordena e retorna os \textbf{top-6} melhores pelo \textit{score} híbrido.
+  \item Re-ordena e retorna os \textbf{top-k} melhores pelo \textit{score} híbrido.
 \end{enumerate}
 
 A motivação foi a falha da busca puramente semântica em \textit{queries} com termos
 jurídicos específicos: ``Quais sanções a ANPD pode aplicar?'' não mapeava para o
 \textit{chunk} da Resolução 4/2023 porque os \textit{scores} semânticos de
 \textit{chunks} concorrentes eram superiores. Com BM25 com 15\% de peso, o termo
-``sanções'' identificou o \textit{chunk} correto e o elevou para o top-6.
+``sanções'' identificou o \textit{chunk} correto e o elevou para o top-k.
 
 A escolha de $\alpha=0{,}85$ justifica-se pelo comportamento de \textit{queries} em
 inglês: com $\alpha=0{,}70$, o BM25$=0$ para tokens ingleses reduziria o \textit{score}
@@ -381,7 +381,7 @@ Figura~\ref{fig:arch}.
 \node[box, right=of B1]       (B2) {SBERT};
 \node[box, right=of B2]       (B3) {Pool 150\\candidatos};
 \node[box, right=of B3]       (B4) {Híbrido\\BM25+Cos\\$\alpha{=}0{,}85$};
-\node[box, right=of B4]       (B5) {Top-6};
+\node[box, right=of B4]       (B5) {Top-k};
 
 \draw[arr](B1)--(B2); \draw[arr](B2)--(B3);
 \draw[arr](B3)--(B4); \draw[arr](B4)--(B5);
@@ -447,7 +447,7 @@ LLM gerador      & Google Gemini Flash Lite       & \textit{Free tier}; temperat
 \textit{Embedding} & SBERT multilíngue            & Superior em português jurídico; fornecedor distinto do LLM (ver §5.1) & 3.3.1 \\
 \textit{Vector store} & ChromaDB (\texttt{PersistentClient}) & Zero infraestrutura; persistência em disco; cosine similarity nativa & 0.6.3 \\
 Chunking         & LangChain Text Splitters       & RecursiveCharacterTextSplitter com separadores para texto jurídico & 0.3.4 \\
-Recuperação      & BM25 + ChromaDB cosine         & Pool 150 candidatos, $\alpha{=}0{,}85$ semântico + 0,15 BM25, top-6 & própria \\
+Recuperação      & BM25 + ChromaDB cosine         & Pool 150 candidatos, $\alpha{=}0{,}85$ semântico + 0,15 BM25, top-k & própria \\
 Validação        & Pydantic                       & Schema estrito para o JSON de saída; regras de negócio declarativas & 2.10.4 \\
 PDF loader       & pypdf                          & Extração de texto por página com número de página como metadado & 5.1.0 \\
 Interface        & Streamlit                      & Frontend leve, demonstrável ao vivo sem infraestrutura adicional & 1.41.1 \\
@@ -491,7 +491,7 @@ arquitetura.
 \textbf{Versão} & \textbf{Descrição} & \textbf{Prompt utilizado} \\
 \midrule
 \textbf{Baseline} & Gemini Flash Lite chamado diretamente, sem recuperação de contexto, sem validação estruturada & \emph{``Responda sobre LGPD e proteção de dados pessoais no Brasil: [pergunta]''} \\
-\textbf{RAG completo} & Recuperação híbrida top-6 $\to$ prompt com contexto $\to$ Gemini $\to$ Pydantic $\to$ recusa quando insuficiente & Template com contexto recuperado e instrução explícita de recusa \\
+\textbf{RAG completo} & Recuperação híbrida top-k $\to$ prompt com contexto $\to$ Gemini $\to$ Pydantic $\to$ recusa quando insuficiente & Template com contexto recuperado e instrução explícita de recusa \\
 \bottomrule
 \end{tabularx}
 \fonte{Elaborado pelos autores.}
@@ -725,7 +725,7 @@ ficou em \textbf{0,74}, abaixo de \textit{chunks} de guias menos relevantes.
 \textbf{Caso das sanções:} a \textit{query} ``Quais sanções a ANPD pode aplicar?''
 não encontrava o \textit{chunk} da Resolução 4/2023 com busca semântica pura. Com a
 busca híbrida, o BM25 identificou os termos ``sanções'', ``aplicar'' e ``ANPD'' e
-elevou o \textit{chunk} correto ao top-6.
+elevou o \textit{chunk} correto ao top-k.
 
 \textbf{Limitação que permanece:} linguagem coloquial ainda causa problemas. A
 pergunta ``o que fala a LGPD'' não mapeia bem para ``Esta Lei dispõe sobre\ldots''.
