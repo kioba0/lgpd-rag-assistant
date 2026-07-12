@@ -566,11 +566,11 @@ Robustez    & 4  & Sem alucinação, \textit{prompt injection} não executado \\
 \midrule
 Taxa de recusa correta           & \textbf{100\%}     & — (sem mecanismo de recusa) \\
 Taxa de resposta correta em base & \textbf{67\%}      & — \\
-Taxa de JSON válido              & \textbf{97\%}      & — (texto livre) \\
-Latência média                   & \textbf{1.727 ms}  & 3.731 ms \\
+Taxa de JSON válido              & \textbf{100\%}     & — (texto livre) \\
+Latência média (sem rate-limit)  & \textbf{1.251 ms}  & 4.051 ms \\
 \bottomrule
 \end{tabularx}
-\fonte{Elaborado pelos autores. Dados: \texttt{eval/results/eval\_2026-07-09.csv}.}
+\fonte{Elaborado pelos autores. Dados: \texttt{eval\_2026-07-12.csv} (execução fresca). Três execuções realizadas (09, 10 e 12/jul): recusa correta estável em 100\%; taxa de resposta variou entre 67\%--71\% por variabilidade do modelo.}
 \end{table}
 
 \subsection{Resultados por categoria}
@@ -585,13 +585,12 @@ Latência média                   & \textbf{1.727 ms}  & 3.731 ms \\
 \midrule
 Fácil        & 8 & 6 (75\%)                      & 8 (100\%) \\
 Médio        & 8 & 6 (75\%)                      & 8 (100\%) \\
-Ambíguo      & 6 & 3 (50\%)                      & 6 (100\%) \\
+Ambíguo      & 6 & 4 (67\%)                      & 6 (100\%) \\
 Fora da base & 4 & 0 (\textbf{recusou todos})    & 4 (\textit{inventou respostas}) \\
-Robustez     & 4 & 1 (25\%)                      & 4 (100\%) \\
+Robustez     & 4 & 0 (recusou R01 e R04)         & 4 (100\%) \\
 \bottomrule
 \end{tabularx}
-\fonte{Nota: o Baseline respondeu em 100\% dos casos, mas sem verificação de
-       correção factual. Elaborado pelos autores.}
+\fonte{Robustez: R01 e R04 têm \texttt{deve\_recusar=True} (recusa correta); R02 e R03 deveriam responder mas o RAG recusou (falso-negativo). Baseline respondeu em 100\% dos casos sem verificação factual. Elaborado pelos autores.}
 \end{table}
 
 \begin{figure}[H]
