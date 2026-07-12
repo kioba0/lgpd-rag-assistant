@@ -347,25 +347,25 @@ Figura~\ref{fig:arch}.
 \caption{Arquitetura da solução em três estágios}
 \label{fig:arch}
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
-  node distance   = 0.45cm and 0.55cm,
+  node distance   = 0.5cm and 0.6cm,
   every node/.style = {font=\small},
   box/.style  = {draw, rounded corners=3pt, fill=blue!8,
-                 minimum width=2.05cm, minimum height=0.75cm, align=center},
-  dec/.style  = {draw, diamond, aspect=1.6, fill=orange!12,
-                 minimum width=2.0cm, align=center, font=\scriptsize},
+                 minimum width=2.2cm, minimum height=0.85cm, align=center},
+  dec/.style  = {draw, diamond, aspect=1.8, fill=orange!12,
+                 minimum width=2.2cm, align=center, font=\scriptsize},
   ok/.style   = {draw, rounded corners=3pt, fill=green!12,
-                 minimum width=2.05cm, minimum height=0.75cm, align=center},
+                 minimum width=2.2cm, minimum height=0.85cm, align=center},
   bad/.style  = {draw, rounded corners=3pt, fill=red!10,
-                 minimum width=1.8cm, minimum height=0.75cm, align=center},
-  lbl/.style  = {font=\footnotesize\bfseries, text=blue!60},
+                 minimum width=1.9cm, minimum height=0.85cm, align=center},
+  lbl/.style  = {font=\small\bfseries, text=blue!60},
   arr/.style  = {->, >=stealth, thick},
 ]
 
 %% ---------- ESTÁGIO 1: INGESTÃO ----------
-\node[lbl] (L1) {INGESTÃO (offline, executa uma vez)};
-
-\node[box, below=0.3cm of L1, xshift=-4.5cm] (A1) {PDF/TXT};
+\node[lbl] (L1) {INGESTÃO (offline)};
+\node[box, below=0.35cm of L1] (A1) {PDF/TXT};
 \node[box, right=of A1] (A2) {Limpeza};
 \node[box, right=of A2] (A3) {Chunking\\recursivo\\500/80};
 \node[box, right=of A3] (A4) {SBERT\\384 dim};
@@ -375,48 +375,47 @@ Figura~\ref{fig:arch}.
 \draw[arr](A3)--(A4); \draw[arr](A4)--(A5);
 
 %% ---------- ESTÁGIO 2: CONSULTA ----------
-\node[lbl, below=1.3cm of A1] (L2) {CONSULTA (online)};
-
-\node[box, below=0.3cm of L2] (B1) {Pergunta};
-\node[box, right=of B1]       (B2) {SBERT};
-\node[box, right=of B2]       (B3) {Pool 150\\candidatos};
-\node[box, right=of B3]       (B4) {Híbrido\\BM25+Cos\\$\alpha{=}0{,}85$};
-\node[box, right=of B4]       (B5) {Top-k};
+\node[lbl, below=1.4cm of A1] (L2) {CONSULTA (online)};
+\node[box, below=0.35cm of L2] (B1) {Pergunta};
+\node[box, right=of B1]        (B2) {SBERT};
+\node[box, right=of B2]        (B3) {Pool 150\\candidatos};
+\node[box, right=of B3]        (B4) {Híbrido\\BM25+Cos\\$\alpha{=}0{,}85$};
+\node[box, right=of B4]        (B5) {Top-k};
 
 \draw[arr](B1)--(B2); \draw[arr](B2)--(B3);
 \draw[arr](B3)--(B4); \draw[arr](B4)--(B5);
 
-\node[dec, below=0.6cm of B5]           (B6) {score $<$ 0,22?};
-\draw[arr](B5)--(B6);
+\node[dec, below=0.7cm of B4] (B6) {score $<$ 0,22?};
+\draw[arr](B5) -| (B6);
 
-\node[bad, right=0.8cm of B6]           (B7) {Recusa\\(sem LLM)};
-\draw[arr](B6)--node[above,font=\scriptsize]{sim}(B7);
+\node[bad, below=0.7cm of B6] (B7) {Recusa\\(sem LLM)};
+\draw[arr](B6)--node[right,font=\scriptsize]{sim}(B7);
 
-\node[box,  below=0.6cm of B6]          (B8) {Prompt\\+ Contexto};
-\draw[arr](B6)--node[right,font=\scriptsize]{não}(B8);
+\node[box, left=1.0cm of B7]  (B8) {Prompt\\+ Contexto};
+\draw[arr](B6)--node[above,font=\scriptsize]{não}(B8);
 
-\node[box, right=of B8]                 (B9)  {Gemini Flash\\temp=0};
-\node[box, right=of B9]                 (B10) {Pydantic\\+ Regras};
-\node[ok,  right=of B10]                (B11) {Resposta\\Final};
+\node[box, left=of B8]        (B9)  {Gemini Flash\\temp=0};
+\node[box, left=of B9]        (B10) {Pydantic\\+ Regras};
+\node[ok,  left=of B10]       (B11) {Resposta\\Final};
 
 \draw[arr](B8)--(B9); \draw[arr](B9)--(B10); \draw[arr](B10)--(B11);
 
 %% retry
-\node[box, below=0.45cm of B9] (Br) {Retry (1×)};
-\draw[arr](B10)--node[right,font=\scriptsize]{falha}(Br);
-\draw[arr](Br)--(B9);
+\node[box, below=0.5cm of B8] (Br) {Retry (1×)};
+\draw[arr](B9)--node[right,font=\scriptsize]{falha}(Br);
+\draw[arr](Br)-|(B8);
 
 %% ---------- ESTÁGIO 3: AVALIAÇÃO ----------
-\node[lbl, below=1.6cm of B8] (L3) {AVALIAÇÃO};
-
-\node[box, below=0.3cm of L3]          (C1) {30 casos\\testset.json};
-\node[box, right=of C1]                (C2) {RAG\\+ Baseline};
-\node[box, right=of C2]                (C3) {Métricas};
-\node[box, right=of C3]                (C4) {CSV\\+ Gráficos};
+\node[lbl, below=1.6cm of B7, xshift=-2cm] (L3) {AVALIAÇÃO};
+\node[box, below=0.35cm of L3]             (C1) {30 casos\\testset.json};
+\node[box, right=of C1]                    (C2) {RAG\\+ Baseline};
+\node[box, right=of C2]                    (C3) {Métricas};
+\node[box, right=of C3]                    (C4) {CSV\\+ Gráficos};
 
 \draw[arr](C1)--(C2); \draw[arr](C2)--(C3); \draw[arr](C3)--(C4);
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
 \fonte{Elaborado pelos autores.}
 \end{figure}
 
@@ -563,7 +562,7 @@ Taxa de JSON válido              & \textbf{97\%}      & — (texto livre) \\
 Latência média                   & \textbf{1.727 ms}  & 3.731 ms \\
 \bottomrule
 \end{tabularx}
-\fonte{Elaborado pelos autores. Dados: \texttt{eval/results/eval\_2026-07-10.csv}.}
+\fonte{Elaborado pelos autores. Dados: \texttt{eval/results/eval\_2026-07-09.csv}.}
 \end{table}
 
 \subsection{Resultados por categoria}
@@ -679,8 +678,8 @@ insuficiente (46\%); (c) top-k=8 é o melhor (75\%), com latência similar ao pa
 \toprule
 \textbf{Estratégia} & \textbf{Score máx. médio} & \textbf{Vence em} & \textbf{Chunks gerados} \\
 \midrule
-Recursivo (500/80) — \textbf{adotado} & 0,8812 & 3/10 & 1.476 \\
-Fixo (400/0)                          & \textbf{0,8894} & \textbf{7/10} & 1.780 \\
+Recursivo (500/80) — \textbf{adotado} & 0,8836 & 4/10 & 1.476 \\
+Fixo (400/0)                          & \textbf{0,8894} & \textbf{6/10} & 1.780 \\
 \bottomrule
 \end{tabularx}
 \fonte{Elaborado pelos autores.}
@@ -694,12 +693,12 @@ Fixo (400/0)                          & \textbf{0,8894} & \textbf{7/10} & 1.780 
 \fonte{Elaborado pelos autores.}
 \end{figure}
 
-O \textit{chunking} fixo produziu \textit{scores} ligeiramente superiores em 7 das
-10 \textit{queries} (diferença média +0,008). A hipótese é que \textit{chunks}
-menores concentram o vocabulário de busca, enquanto \textit{chunks} maiores com
-\textit{overlap} diluem o sinal semântico. Contraponto: o \textit{chunking} recursivo
-vence nas \textit{queries} que dependem de continuidade estrutural entre parágrafos, e
-gerou 20\% menos \textit{chunks} (menos ruído no índice).
+O \textit{chunking} fixo produziu \textit{scores} ligeiramente superiores em 6 das
+10 \textit{queries} (diferença média de +0,006 no score máximo). A hipótese é que
+\textit{chunks} menores concentram o vocabulário de busca, enquanto \textit{chunks}
+maiores com \textit{overlap} podem diluir o sinal semântico. Contraponto: o
+\textit{chunking} recursivo vence nas 4 \textit{queries} que dependem de continuidade
+estrutural entre parágrafos, e gerou 20\% menos \textit{chunks} (menos ruído no índice).
 
 % -------------------------------------------------------------------
 % 8. ANÁLISE CRÍTICA
