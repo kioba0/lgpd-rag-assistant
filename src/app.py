@@ -23,7 +23,7 @@ st.caption("Base: Lei 13.709/2018 + Resoluções e Guias da ANPD")
 with st.sidebar:
     st.header("Configurações")
     modo = st.radio("Modo de resposta", ["RAG (com contexto)", "LLM Direto (baseline)"])
-    top_k = st.slider("Chunks recuperados (top-k)", min_value=2, max_value=12, value=6)
+    top_k = st.slider("Chunks recuperados (top-k)", min_value=2, max_value=8, value=6)
     mostrar_chunks = st.checkbox("Mostrar chunks recuperados", value=False)
     st.divider()
     st.caption("**RAG:** recupera trechos relevantes antes de gerar a resposta.")
